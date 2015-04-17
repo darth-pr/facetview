@@ -338,7 +338,8 @@ search box - the end user will not know they are happening.
 
         // a big default value (pulled into options below)
         // demonstrates how to specify an output style based on the fields that can be found in the result object
-        // where a specified field is not found, the pre and post for it are just ignored
+        // where a specified field is not found, the 'alternative_field' will be used
+        // if the field and alternative_field are both not found, pre and post are just ignored
         var resdisplay = [
                 [
                     {
@@ -354,6 +355,7 @@ search box - the end user will not know they are happening.
                     {
                         "pre": "<strong>",
                         "field": "title",
+                        "alternative_field": "booktitle",
                         "post": "</strong>"
                     }
                 ],
@@ -851,7 +853,11 @@ search box - the end user will not know they are happening.
                 line = "";
                 for ( var object = 0; object < display[lineitem].length; object++ ) {
                     var thekey = display[lineitem][object]['field'];
+                    var alternative_key = display[lineitem][object]['alternative_field'];
                     var thevalue = getvalue(record, thekey);
+                    if (!(thevalue && thevalue.toString().length)) {
+                        thevalue = getvalue(record, alternative_key);
+                    }
                     if (thevalue && thevalue.toString().length) {
                         display[lineitem][object]['pre']
                             ? line += display[lineitem][object]['pre'] : false;
