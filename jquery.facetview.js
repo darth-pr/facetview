@@ -444,7 +444,10 @@ search box - the end user will not know they are happening.
             "linkify": true,
             "default_operator": "OR",
             "default_freetext_fuzzify": false,
-
+            "solr_doc_id": "id",
+            "highlight_fields": [],
+            "highlight_pre": "<em>",
+            "highlight_post": "</em>"
         };
 
 
@@ -741,6 +744,7 @@ search box - the end user will not know they are happening.
             resultobj["start"] = "";
             resultobj["found"] = "";
             resultobj["facets"] = new Object();
+            resultobj["highlighting"] = new Object();
             if ( options.search_index == "elasticsearch" ) {
 
                 for ( var item = 0; item < dataobj.hits.hits.length; item++ ) {
@@ -769,6 +773,7 @@ search box - the end user will not know they are happening.
                 resultobj["records"] = dataobj.response.docs;
                 resultobj["start"] = dataobj.response.start;
                 resultobj["found"] = dataobj.response.numFound;
+                resultobj["highlighting"] = dataobj.highlighting;
                 if (dataobj.facet_counts) {
                     for (var item in dataobj.facet_counts.facet_fields) {
                         var facetsobj = new Object();
@@ -837,6 +842,7 @@ search box - the end user will not know they are happening.
         var buildrecord = function(index) {
             var record = options.data['records'][index];
             var result = options.resultwrap_start;
+            var highlights = options.data['highlighting'][record[options.solr_doc_id]];
             // add first image where available
             if (options.display_images) {
                 var recstr = JSON.stringify(record);
@@ -854,9 +860,18 @@ search box - the end user will not know they are happening.
                 for ( var object = 0; object < display[lineitem].length; object++ ) {
                     var thekey = display[lineitem][object]['field'];
                     var alternative_key = display[lineitem][object]['alternative_field'];
-                    var thevalue = getvalue(record, thekey);
-                    if (!(thevalue && thevalue.toString().length)) {
-                        thevalue = getvalue(record, alternative_key);
+                    var thevalue;
+                    if (display[lineitem][object].hasOwnProperty('field')) {
+                        var thekey = display[lineitem][object]['field'];                    
+                        var alternative_key = display[lineitem][object]['alternative_field'];
+                        thevalue = getvalue(record, thekey);
+                        if (!(thevalue && thevalue.toString().length)) {
+                            thevalue = getvalue(record, alternative_key);
+                        }
+                    }
+                    else if (display[lineitem][object].hasOwnProperty('highlight_field')){
+                        var highlightkey = display[lineitem][object]['highlight_field'];
+                        thevalue = highlights[highlightkey];
                     }
                     if (thevalue && thevalue.toString().length) {
                         display[lineitem][object]['pre']
@@ -1179,8 +1194,15 @@ search box - the end user will not know they are happening.
             if ( options.facets.length > 0 ) {
                 urlfilters += "facet=on&";
             }
+            // highlighting params                                                          ////////hl////////
+            var highlighting_params = "";
+            if (options.highlight_fields.length > 0) {
+                highlighting_params += "hl=true&hl.fl=" + options.highlight_fields.join(",");
+                highlighting_params += "&hl.simple.pre=" + options.highlight_pre;
+                highlighting_params += "&hl.simple.post=" + options.highlight_post + "&";
+            }
             // build starting URL
-            var theurl = urlparams + pageparams + urlfilters;
+            var theurl = urlparams + pageparams + urlfilters + highlighting_params;
             // add default query values
             // build the query, starting with default values
             var query = "";
