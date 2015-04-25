@@ -191,8 +191,9 @@ result_display
 --------------
 A display template for search results. It is a list of lists.
 Each list specifies a line. Within each list, specify the contents of the line using objects to describe 
-them. Each content piece should pertain to a particular "field" of the result set, and should specify what 
-to show "pre" and "post" the given field
+them. Each content piece should pertain to a particular "field" or "highlight_field" of the result set.
+For each "field" you can specify what to show "pre" and "post" the given field.
+For all "highlight_field" , "highlight_pre" and "highlight_pre" general options are used.
 
 display_images
 --------------
@@ -220,6 +221,18 @@ Set to false to wait for user input before issuing the first search.
 fields
 ------
 A list of which fields the index should return in result objects (by default elasticsearch returns them all).
+
+highlight_fields
+----------------
+A list of fields used for highlighting (passed to solr query as the value of hl.fields)
+
+highlight_pre
+-------------
+HTML markup to inject before highlight fields (passed to solr query as the value of hl.simple.pre)
+
+highlight_post
+-------------
+HTML markup to inject after highlight fields (passed to solr query as the value of hl.simple.post)
 
 partial_fields
 --------------
@@ -390,7 +403,12 @@ search box - the end user will not know they are happening.
                     {
                         "field": "link.url"
                     }
-                ]    
+                ],
+                [
+                    {
+                    	"highlight_field": "text"
+                    }
+                ]
             ];
 
         // specify the defaults
@@ -446,8 +464,8 @@ search box - the end user will not know they are happening.
             "default_freetext_fuzzify": false,
             "solr_doc_id": "id",
             "highlight_fields": [],
-            "highlight_pre": "<em>",
-            "highlight_post": "</em>"
+            "highlight_pre": "<mark>",
+            "highlight_post": "</mark>"
         };
 
 
