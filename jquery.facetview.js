@@ -192,8 +192,7 @@ result_display
 A display template for search results. It is a list of lists.
 Each list specifies a line. Within each list, specify the contents of the line using objects to describe 
 them. Each content piece should pertain to a particular "field" or "highlight_field" of the result set.
-For each "field" you can specify what to show "pre" and "post" the given field.
-For all "highlight_field" , "highlight_pre" and "highlight_pre" general options are used.
+For each "field" or "highlight_field", you can specify what to show "pre" and "post" the given field.
 
 display_images
 --------------
@@ -406,7 +405,9 @@ search box - the end user will not know they are happening.
                 ],
                 [
                     {
-                    	"highlight_field": "text"
+                    	"pre": "<span class='highlightings'>",
+                    	"highlight_field": "text",
+                    	"post": "</span>"
                     }
                 ]
             ];
