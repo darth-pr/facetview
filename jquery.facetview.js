@@ -367,6 +367,7 @@ search box - the end user will not know they are happening.
                     {
                         "pre": "<strong>",
                         "field": "title",
+                        "alternative_field": "booktitle",
                         "post": "</strong>"
                     }
                 ],
