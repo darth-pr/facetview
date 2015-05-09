@@ -333,7 +333,6 @@ default_operator
 ----------------
 Sets the default operator in text search strings - elasticsearch uses OR by default, but can also be AND
 
-
 default_freetext_fuzzify
 ------------------------
 If this exists and is not false, it should be either * or ~. If it is * then * will be prepended and appended
