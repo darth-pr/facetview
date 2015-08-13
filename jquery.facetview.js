@@ -13,13 +13,6 @@
  *
  */
 
-var line_chart = null;
-var MONTHS = [
-    null,
-    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
-];
-
 // first define the bind with delay function from (saves loading it separately) 
 // https://github.com/bgrins/bindWithDelay/blob/master/bindWithDelay.js
 
@@ -198,8 +191,8 @@ result_display
 --------------
 A display template for search results. It is a list of lists.
 Each list specifies a line. Within each list, specify the contents of the line using objects to describe 
-them. Each content piece should pertain to a particular "field" of the result set, and should specify what 
-to show "pre" and "post" the given field
+them. Each content piece should pertain to a particular "field" or "highlight_field" of the result set.
+For each "field" or "highlight_field", you can specify what to show "pre" and "post" the given field.
 
 display_images
 --------------
@@ -227,6 +220,18 @@ Set to false to wait for user input before issuing the first search.
 fields
 ------
 A list of which fields the index should return in result objects (by default elasticsearch returns them all).
+
+highlight_fields
+----------------
+A list of fields used for highlighting (passed to solr query as the value of hl.fields)
+
+highlight_pre
+-------------
+HTML markup to inject before highlight fields (passed to solr query as the value of hl.simple.pre)
+
+highlight_post
+-------------
+HTML markup to inject after highlight fields (passed to solr query as the value of hl.simple.post)
 
 partial_fields
 --------------
@@ -345,7 +350,8 @@ search box - the end user will not know they are happening.
 
         // a big default value (pulled into options below)
         // demonstrates how to specify an output style based on the fields that can be found in the result object
-        // where a specified field is not found, the pre and post for it are just ignored
+        // where a specified field is not found, the 'alternative_field' will be used
+        // if the field and alternative_field are both not found, pre and post are just ignored
         var resdisplay = [
                 [
                     {
@@ -361,6 +367,7 @@ search box - the end user will not know they are happening.
                     {
                         "pre": "<strong>",
                         "field": "title",
+                        "alternative_field": "booktitle",
                         "post": "</strong>"
                     }
                 ],
@@ -395,9 +402,15 @@ search box - the end user will not know they are happening.
                     {
                         "field": "link.url"
                     }
+                ],
+                [
+                    {
+                    	"pre": "<span class='highlightings'>",
+                    	"highlight_field": "text",
+                    	"post": "</span>"
+                    }
                 ]
             ];
-
 
         // specify the defaults
         var defaults = {
@@ -410,25 +423,32 @@ search box - the end user will not know they are happening.
             "sharesave_link": true,
             "description":"",
             "facets":[],
+            "facet_display_count":5,
             "extra_facets": {},
             "enable_rangeselect": false,
             "include_facets_in_querystring": false,
             "result_display": resdisplay,
             "display_images": true,
-            "search_url":"",
             "datatype":"jsonp",
             "initialsearch":true,
             "fields": false,
             "partial_fields": false,
             "nested": [],
-            "default_url_params":{},
+            "default_url_params":{
+                'wt':'json',
+                'indent':'true'},
             "freetext_submit_delay":"500",
+            "query_parameter":"q",
             "q":"",
             "sort":[],
             "predefined_filters":{},
             "paging":{
                 "from":0,
                 "size":10
+            },
+            "solr_paging_params":{
+                "from":"start",
+                "size":"rows"
             },
             "pager_on_top": false,
             "pager_slider": false,
@@ -442,7 +462,11 @@ search box - the end user will not know they are happening.
             "pushstate": true,
             "linkify": true,
             "default_operator": "OR",
-            "default_freetext_fuzzify": false
+            "default_freetext_fuzzify": false,
+            "solr_doc_id": "id",
+            "highlight_fields": [],
+            "highlight_pre": "<mark>",
+            "highlight_post": "</mark>"
         };
 
 
@@ -534,7 +558,7 @@ search box - the end user will not know they are happening.
             if ('size' in morewhat ) {
                 var currentval = morewhat['size'];
             } else {
-                var currentval = 10;
+                var currentval = options.facet_display_count;
             }
             var newmore = prompt('Currently showing ' + currentval + '. How many would you like instead?');
             if (newmore) {
@@ -672,6 +696,7 @@ search box - the end user will not know they are happening.
                 $('.facetview_filtershow', obj).bind('click',showfiltervals);
                 $('.facetview_learnmore', obj).unbind('click',learnmore);
                 $('.facetview_learnmore', obj).bind('click',learnmore);
+		$('.facetview_filtershow' ).trigger( "click" );
                 options.description ? $('#facetview_filters', obj).append('<div>' + options.description + '</div>') : "";
             };
         };
@@ -738,27 +763,49 @@ search box - the end user will not know they are happening.
             resultobj["start"] = "";
             resultobj["found"] = "";
             resultobj["facets"] = new Object();
-            for ( var item = 0; item < dataobj.hits.hits.length; item++ ) {
-                if ( options.fields ) {
-                    resultobj["records"].push(dataobj.hits.hits[item].fields);
-                } else if ( options.partial_fields ) {
-                    var keys = [];
-                    for(var key in options.partial_fields){
-                        keys.push(key);
+            resultobj["highlighting"] = new Object();
+            if ( options.search_index == "elasticsearch" ) {
+
+                for ( var item = 0; item < dataobj.hits.hits.length; item++ ) {
+                    if ( options.fields ) {
+                        resultobj["records"].push(dataobj.hits.hits[item].fields);
+                    } else if ( options.partial_fields ) {
+                        var keys = [];
+                        for(var key in options.partial_fields){
+                            keys.push(key);
+                        }
+                        resultobj["records"].push(dataobj.hits.hits[item].fields[keys[0]]);
+                    } else {
+                        resultobj["records"].push(dataobj.hits.hits[item]._source);
                     }
-                    resultobj["records"].push(dataobj.hits.hits[item].fields[keys[0]]);
-                } else {
-                    resultobj["records"].push(dataobj.hits.hits[item]._source);
                 }
-            }
-            resultobj["start"] = "";
-            resultobj["found"] = dataobj.hits.total;
-            for (var item in dataobj.facets) {
-                var facetsobj = new Object();
-                for (var thing = 0; thing < dataobj.facets[item]["terms"].length; thing++) {
-                    facetsobj[ dataobj.facets[item]["terms"][thing]["term"] ] = dataobj.facets[item]["terms"][thing]["count"];
+                resultobj["start"] = "";
+                resultobj["found"] = dataobj.hits.total;
+                for (var item in dataobj.facets) {
+                    var facetsobj = new Object();
+                    for (var thing = 0; thing < dataobj.facets[item]["terms"].length; thing++) {
+                        facetsobj[ dataobj.facets[item]["terms"][thing]["term"] ] = dataobj.facets[item]["terms"][thing]["count"];
+                    }
+                    resultobj["facets"][item] = facetsobj;
                 }
-                resultobj["facets"][item] = facetsobj;
+            } else {
+                resultobj["records"] = dataobj.response.docs;
+                resultobj["start"] = dataobj.response.start;
+                resultobj["found"] = dataobj.response.numFound;
+                resultobj["highlighting"] = dataobj.highlighting;
+                if (dataobj.facet_counts) {
+                    for (var item in dataobj.facet_counts.facet_fields) {
+                        var facetsobj = new Object();
+                        var count = 0;
+                        for ( var each in dataobj.facet_counts.facet_fields[item]) {
+                            if ( count % 2 == 0 ) {
+                            facetsobj[ dataobj.facet_counts.facet_fields[item][each] ] = dataobj.facet_counts.facet_fields[item][count + 1];
+                            }
+                            count += 1;
+                        }
+                        resultobj["facets"][item] = facetsobj;
+                    }
+                }
             }
             return resultobj;
         };
@@ -801,7 +848,7 @@ search box - the end user will not know they are happening.
                 if ( addressed_ob !== undefined ) {
                     var thevalue = [];
                     for ( var row = 0; row < addressed_ob.length; row++ ) {
-                        thevalue.push(getvalue(addressed_ob[row], left));
+                        thevalue.push(addressed_ob[row]);//thevalue.push(getvalue(addressed_ob[row], left));
                     }
                     return thevalue;
                 } else {
@@ -814,6 +861,7 @@ search box - the end user will not know they are happening.
         var buildrecord = function(index) {
             var record = options.data['records'][index];
             var result = options.resultwrap_start;
+            var highlights = options.data['highlighting'][record[options.solr_doc_id]];
             // add first image where available
             if (options.display_images) {
                 var recstr = JSON.stringify(record);
@@ -830,7 +878,20 @@ search box - the end user will not know they are happening.
                 line = "";
                 for ( var object = 0; object < display[lineitem].length; object++ ) {
                     var thekey = display[lineitem][object]['field'];
-                    var thevalue = getvalue(record, thekey);
+                    var alternative_key = display[lineitem][object]['alternative_field'];
+                    var thevalue;
+                    if (display[lineitem][object].hasOwnProperty('field')) {
+                        var thekey = display[lineitem][object]['field'];                    
+                        var alternative_key = display[lineitem][object]['alternative_field'];
+                        thevalue = getvalue(record, thekey);
+                        if (!(thevalue && thevalue.toString().length)) {
+                            thevalue = getvalue(record, alternative_key);
+                        }
+                    }
+                    else if (display[lineitem][object].hasOwnProperty('highlight_field')){
+                        var highlightkey = display[lineitem][object]['highlight_field'];
+                        thevalue = highlights[highlightkey];
+                    }
                     if (thevalue && thevalue.toString().length) {
                         display[lineitem][object]['pre']
                             ? line += display[lineitem][object]['pre'] : false;
@@ -870,19 +931,6 @@ search box - the end user will not know they are happening.
             var data = parseresults(sdata);
             options.data = data;
             
-            // initialize plot                                                                                                                                                       
-            if (line_chart == null && options.linechart_field != null && options.linechart_field != "") {
-                line_chart = c3.generate({
-                    bindto: '#line_chart',
-                    data: {
-                        x: 'year',
-                        columns: [
-                        ]
-                    }
-                });
-            }
-
-
             // for each filter setup, find the results for it and append them to the relevant filter
             for ( var each = 0; each < options.facets.length; each++ ) {
                 var facet = options.facets[each]['field'];
@@ -890,65 +938,15 @@ search box - the end user will not know they are happening.
                 var facet_filter = $('[id="facetview_'+facetclean+'"]', obj);
                 facet_filter.children().find('.facetview_filtervalue').remove();
                 var records = data["facets"][ facet ];
-		var years = ['year'];
-                var year_hits = ['hits'];
-		var lineChartFacet = false;
-		if (facet == options.linechart_field){
-		    lineChartFacet = true;
-		}
-
                 for ( var item in records ) {
-		    var show_val = null;
-		    if (lineChartFacet){
-			var dt = new Date(parseInt(item));
-			show_val = parseInt(dt.toISOString().substring(0,4))+"-"+dt.toISOString().substring(5,7);
-		    }
-		    else show_val = item;
                     var append = '<tr class="facetview_filtervalue" style="display:none;"><td><a class="facetview_filterchoice' +
-                        '" rel="' + facet + '" href="' + item + '">' + show_val +
+                        '" rel="' + facet + '" href="' + item + '">' + item +
                         ' (' + records[item] + ')</a></td></tr>';
                     facet_filter.append(append);
-		    if (lineChartFacet){
-			years.push(show_val);
-			year_hits.push(records[item]);
-		    }                    
                 }
                 if ( $('.facetview_filtershow[rel="' + facetclean + '"]', obj).hasClass('facetview_open') ) {
                     facet_filter.children().find('.facetview_filtervalue').show();
                 }
-
-		if(lineChartFacet){
-		    // clean the years and hits
-		    var year_hash = {}
-		    for (var i = 0; i < years.length; i++){
-			if (years[i] == "year") continue;
-			var year = years[i].substring(0,4);
-			if (year in year_hash){
-			    hits = parseInt(years[year]);
-			    hits += parseInt(year_hits[i]);
-			}
-                        else{
-                            year_hash[year] = year_hits[i];
-			}
-		    }
-
-		    years = [];
-		    year_hits = [];
-		    years.push('year');
-		    year_hits.push('hits');
-		    for (var year in year_hash){
-			years.push(year);
-			year_hits.push(year_hash[year]);
-		    }
-                    			    
-		    line_chart.load({
-			columns: [
-			    years,
-			    year_hits
-			    ]
-			});
-		}
-
             }
             $('.facetview_filterchoice', obj).bind('click',clickfilterchoice);
             $('.facetview_filters', obj).each(function() {
@@ -1193,6 +1191,59 @@ search box - the end user will not know they are happening.
             return qy;
         };
 
+        var solrsearchquery = function() {
+            // set default URL params
+            var urlparams = "";
+            for (var item in options.default_url_params) {
+                urlparams += item + "=" + options.default_url_params[item] + "&";
+            }
+            // do paging params
+            var pageparams = "";
+            for (var item in options.paging) {
+                pageparams += options.solr_paging_params[item] + "=" + options.paging[item] + "&";
+            }
+            // set facet params
+            var urlfilters = "";
+            for (var item in options.facets) {
+                urlfilters += "facet.field=" + options.facets[item]['field'] + "&";
+                if ( options.facets[item]['size'] ) {
+                    urlfilters += "f." + options.facets[item]['field'] + ".facet.limit=" + options.facets[item]['size'] + "&";
+                }
+            }
+            if ( options.facets.length > 0 ) {
+                urlfilters += "facet=on&";
+            }
+            // highlighting params                                                          ////////hl////////
+            var highlighting_params = "";
+            if (options.highlight_fields.length > 0) {
+                highlighting_params += "hl=true&hl.fl=" + options.highlight_fields.join(",");
+                highlighting_params += "&hl.simple.pre=" + options.highlight_pre;
+                highlighting_params += "&hl.simple.post=" + options.highlight_post + "&";
+            }
+            // build starting URL
+            var theurl = urlparams + pageparams + urlfilters + highlighting_params;
+            // add default query values
+            // build the query, starting with default values
+            var query = "";
+            //for (var item in options.predefined_filters) {
+            // query += item + ":" + options.predefined_filters[item] + " AND ";
+            //}
+            $('.facetview_filterselected',obj).each(function() {
+                query += $(this).attr('rel') + ':"' +
+                $(this).attr('href') + '" AND ';
+            });
+            // add any freetext filter
+            if (options.q != "") {
+                query += options.q + '*';
+            }
+            query = query.replace(/ AND $/,"");
+            // set a default for blank search
+            if (query == "") {
+                query = "*:*";
+            }
+            theurl += options.query_parameter + '=' + query;
+            return theurl;
+         };
         // execute a search
         var dosearch = function() {
             jQuery('.notify_loading').show();
@@ -1203,19 +1254,25 @@ search box - the end user will not know they are happening.
                 options.q = $(options.searchbox_class).last().val();
             };
             // make the search query
-            var qrystr = elasticsearchquery();
+            var qrystr = '';
+            //if ( options.search_index == "elasticsearch") {
+                // qrystr = elasticsearchquery();
+            //} else if (options.search_index == "solr") {
+            
+            qrystr = solrsearchquery();
+            
+            //}
             // augment the URL bar if possible
-            if ( options.pushstate ) {
-                var currurl = '?source=' + options.querystring;
-                window.history.pushState("","search",currurl);
-            };
-            $.ajax({
-                type: "get",
-                url: options.search_url,
-                data: {source: qrystr},
-                // processData: false,
-                dataType: options.datatype,
-                success: showresults
+            // if ( options.pushstate ) {
+            //     var currurl = '?source=' + options.querystring;
+            //     window.history.pushState("","search",currurl);
+            // };
+            $.ajax({ 
+              type: "get", 
+              url: options.search_url + solrsearchquery(), 
+              dataType:options.datatype, 
+              jsonp:"json.wrf", 
+              success: function(data) { showresults(data) } 
             });
         };
 
@@ -1363,7 +1420,6 @@ search box - the end user will not know they are happening.
         } else {
             thefacetview += '<div class="span12" id="facetview_rightcol">';
         }
-        thefacetview += '<div class="facetview_plots_container"><div id="line_chart"/><div id="dendrogram"/></div>';
         thefacetview += '<div class="facetview_search_options_container">';
         thefacetview += '<div class="btn-group" style="display:inline-block; margin-right:5px;"> \
             <a class="btn btn-small" title="clear all search settings and start again" href=""><i class="icon-remove"></i></a> \
@@ -1441,10 +1497,10 @@ search box - the end user will not know they are happening.
                 !options.paging.from ? options.paging.from = 0 : "";
 
                 // handle any source options
-                if ( options.source ) {
-                    parsesource();
-                    delete options.source;
-                }
+                // if ( options.source ) {
+                //     parsesource();
+                //     delete options.source;
+                // }
 
                 // set any default search values into the search bar and create any required filters
                 if ( options.searchbox_class.length == 0 ) {

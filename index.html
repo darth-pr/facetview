@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>Memex FacetSpace - Weapons</title>
+  <title>Celgene Facet View</title>
 
   <script type="text/javascript" src="vendor/jquery/1.7.1/jquery-1.7.1.min.js"></script>
 
@@ -20,69 +20,21 @@
 
   <link rel="stylesheet" href="css/style.css">
 
-  <!-- Load c3.css -->
-  <link href="vendor/c3-0.4.10/c3.css" rel="stylesheet" type="text/css">
-
-  <!-- Load d3.js and c3.js -->
-  <script src="vendor/d3-3.5.6/d3.min.js" charset="utf-8"></script>
-  <script src="vendor/c3-0.4.10/c3.min.js"></script>
-
   <script type="text/javascript">
 jQuery(document).ready(function($) {
   $('.facet-view-simple').facetview({
-    "search_url": '/elasticsearch/dig-atf-weapons-14-geo/_search',
-    "search_index": 'elasticsearch',
-    "facets": [
-        {'field':'itemOffered.category', 'display':'Gun Type'},
-        {'field':'manufacturer', 'display':'Manufacturer'},
-        {'field': 'keywords', 'display' : 'Keywords'},
-        {'field':'price', 'display':'Price'},
-        {'field':'seller.description.raw', 'display':'Seller'},
-        {'field':'publisher.name', 'display':'Site'},
-        {'field':'tika_location.geo_name', 'display':'Location'},
-        {'field':'seller.memberOf.startDate', 'display' : 'Seller Member Date'}
+    search_url: '',
+    search_index: 'solr',
+    facets: [
+        {'field':'year.exact', 'display': 'year'},
+	{'field':'publisher.exact', 'display': 'publisher'}
     ],
-    "datatype":"jsonp",
-    "paging" : {
+    paging: {
         from: 0,
         size: 10
-    },
-    "linechart_field" : "seller.memberOf.startDate",
-    "display_images" : false,
-    "sort" : [{ 'dateCreated': { "order": "desc"} }],
-    "result_display" : [
-        [
-          {
-            "pre" : "<h3>",
-            "field" : "title",
-            "post" : "</h3>"
-          }
-        ],
-        [
-          {
-            "pre" : "<i>Price $",
-            "field" : "price",
-            "post" : "</i>"
-          }
-        ],
-        [
-          {
-            "pre": "<b>Location:</b> <font color='blue'>",
-            "field": "tika_location.geo_name",
-            "post": "</font>"
-          }
-        ],
-        [
-          {
-            "pre" : "<p>",
-            "field" : "description",
-            "post" : "</p>"
-          }
-        ]
-    ],
-    "linkify" : true
+    }
+
   });
-  $('.facetview_filtershow' ).trigger( "click" );
 });
   </script>
 </head>
@@ -92,9 +44,10 @@ jQuery(document).ready(function($) {
 <div class="navbar navbar-fixed-top">
   <div class="navbar-inner">
     <div class="container">
-      <a class="brand" href="#">MEMEX Facet Space</a>
+      <a class="brand" href="#">FacetView</a>
       <ul class="nav">
-        <li><a href="https://weapons.memexproxy.com/">Home</a></li>
+        <li><a href="http://github.com/darth-pr/facetview">Github</a></li>
+        <li><a href="http://github.com/darth-pr/facetview/issues">Issues</a></li>
       </ul>
     </div>
   </div>
@@ -104,7 +57,7 @@ jQuery(document).ready(function($) {
   <div class="content">
     <div class="page-header">
       <h1>
-       Facet Space - Weapons Offer Search
+      Study Search
       </h1>
     </div>
 
