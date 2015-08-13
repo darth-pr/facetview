@@ -166,10 +166,11 @@ bootstrap out; recommend working with or around it.
 Copyright and License
 =====================
 
+Copyright 2015- Chris Mattmann and Paul Ramirez
 Copyright 2011 Open Knowledge Foundation and Cottage Labs.
 
-Licensed under the `MIT License`_
+Licensed under the `Apache Software License, version 2`_
 
 .. _twitter bootstrap: http://twitter.github.com/bootstrap/
-.. _MIT License: http://www.opensource.org/licenses/mit-license.php
+.. _Apache Software License, version 2: http://www.apache.org/licenses/LICENSE-2.0
 
