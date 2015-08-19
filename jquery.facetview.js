@@ -1,4 +1,4 @@
-/*
+/* 
  * jquery.facetview.js
  *
  * displays faceted browse results by querying a specified elasticsearch index
